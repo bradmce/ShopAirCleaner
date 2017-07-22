@@ -86,7 +86,7 @@ void loop() {
             FanLOW();
           }
           break;
-        case 15:  // Star button pressed - Fan Off
+        case 12:  // Left Arrow pressed - Fan Off
           if (fanspeed!=0) {
             fanspeed = 0;
             WriteOFF();
