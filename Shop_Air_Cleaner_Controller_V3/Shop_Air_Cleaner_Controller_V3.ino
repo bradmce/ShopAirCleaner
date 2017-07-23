@@ -65,10 +65,10 @@ void setup() {
   Serial.println("7 Segment Backpack Test");
 #endif
   matrix.begin(0x70);  
-  pinMode(LoRelay, OUTPUT);
-  digitalWrite(LoRelay, LOW);
+  pinMode(LoRelay,OUTPUT);
+  digitalWrite(LoRelay,HIGH);
   pinMode(HiRelay, OUTPUT);
-  digitalWrite(HiRelay, LOW);
+  digitalWrite(HiRelay,HIGH);
 
   irrecv.enableIRIn(); // Start the receiver
 
@@ -262,20 +262,20 @@ void WriteTime() {
   matrix.writeDisplay();
 }
 void FanLOW() {  
-  digitalWrite(HiRelay, LOW);
+  digitalWrite(HiRelay, HIGH);
   delay(500);
-  digitalWrite(LoRelay, HIGH);
+  digitalWrite(LoRelay, LOW);
   fanspeed = 1;
 }
 void FanHI()  {
-  digitalWrite(LoRelay, LOW);
+  digitalWrite(LoRelay, HIGH);
   delay(500);
-  digitalWrite(HiRelay, HIGH);
+  digitalWrite(HiRelay, LOW);
   fanspeed = 2;
 }
 void FanOFF()  {
-  digitalWrite(LoRelay, LOW);
-  digitalWrite(HiRelay, LOW);
+  digitalWrite(LoRelay, HIGH);
+  digitalWrite(HiRelay, HIGH);
   mode = 0;
   fanspeed = 0;
 }
