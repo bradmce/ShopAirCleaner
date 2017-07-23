@@ -7,6 +7,9 @@ https://arduino-info.wikispaces.com/file/view/IR_Remote_Kit_Numeric.pde
 Adafruit I2C 7-segment w/ backpack:
 https://learn.adafruit.com/adafruit-led-backpack?view=all
 
+Countdown timer example:
+http://tech-zen.tv/index.php?option=com_content&view=article&id=209:countdown-timer-with-an-arduino-episode-42&catid=20&Itemid=204
+
 Library used in testing:
 https://github.com/z3t0/Arduino-IRremote
 https://github.com/adafruit/Adafruit-LED-Backpack-Library/archive/master.zip

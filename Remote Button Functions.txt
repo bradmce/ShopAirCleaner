@@ -1,0 +1,27 @@
+Left Arrow:
+	Off from any state.
+	Display shows "OFF" and then goes blank after a few seconds
+
+Right Arrow:
+	No function at this time
+
+Up Arrow:
+	Change fan speed to HI if it was already running in any mode at LOW speed
+	Turn on the unit and set fan to HI speed if it was previously off.
+
+Down Arrow:
+	Change fan speed to LOW if it was already running in any mode at HI speed
+	Turn on the unit and set fan to LOW speed if it was previously off.
+
+OK/Select:
+	No function at this time
+
+0 - 9 digits:
+	Enter value for countdown timer - digits only register when in 'time entry' function
+
+*(Star):
+	Clear the countdown timer value - only registers when in 'time entry' function
+
+#:
+	Start the countdown timer using the entered value
+

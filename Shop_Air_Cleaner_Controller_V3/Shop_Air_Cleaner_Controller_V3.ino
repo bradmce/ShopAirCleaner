@@ -34,25 +34,28 @@ Adafruit_7segment matrix = Adafruit_7segment();
 //Define state tracking vars
   int mode = 0; //  Off = 0, On = 1, Timer = 2
   int fanspeed = 0; //  Low = 1, Hi = 2
+  int timerentry = 0;
   int pos0=0;
   int pos1=0;
   int colon=1;
+  int pos2=0;
   int pos3=0;
-  int pos4=0;
   int hours = 0; // start hours
   int minutes = 0; //start min
   int seconds = 0; //start seconds
+  int timedigits;
+  int timelength;
 
 //Define pins for fan speed relays
   int LoRelay = 9;
   int HiRelay = 8;
 
 //IR setup
-  #define  REPEAT_DELAY  500   // Delay before checking for another button / repeat
+  #define  REPEAT_DELAY  300   // Delay before checking for another button / repeat
   int receiver = 11; // pin 1 of IR receiver to Arduino digital pin 11
   IRrecv irrecv(receiver);           // create instance of 'irrecv'
   decode_results results;            // create instance of 'decode_results'
-  int  ButtonValue;
+  int ButtonValue;
   
 
 
@@ -74,42 +77,142 @@ void setup() {
 }
 
 void loop() {
-{
-  if (irrecv.decode(&results)) // have we received an IR signal?
-
-  {
+  if (irrecv.decode(&results)) {  // have we received an IR signal?
     ButtonValue = translateIR(); 
     //Serial.println(ButtonValue, DEC);
     switch(ButtonValue)
       {
         case 10:  // Up Arrow pressed - Fan to HI speed
           if (fanspeed!=2) {
-            fanspeed = 2;
-            WriteHI();
             FanHI();
-          }          
+          }
+          if (timerentry==1) {
+            timerentry = 0;
+            timedigits="";
+          }
+          WriteHI();
           break;
         case 11:  // Down Arrow pressed - Fan to Lo speed
-          if (fanspeed!=1) {
-            fanspeed = 1;
-            WriteLOW();
+          if (fanspeed!=1) {            
             FanLOW();
           }
+          if (timerentry==1) {
+            timerentry = 0;
+            timedigits="";
+          }
+          WriteLOW();
           break;
         case 12:  // Left Arrow pressed - Fan Off
           if (fanspeed!=0) {
-            fanspeed = 0;
             WriteOFF();
             FanOFF();
           }
-          break;     
-      }    
+          if (timerentry==1) {
+            timerentry = 0;
+            timedigits="";
+          }
+          break;
+        case 15:  // *(star) pressed - reset timer entry
+          if (timerentry==1) {
+            timedigits = 0;
+            matrix.writeDigitRaw(0,0x40);  //blank pixel
+            matrix.writeDigitRaw(1,0x40);  //blank pixel
+            matrix.drawColon(false);  //  Turn off the colon
+            matrix.writeDigitRaw(3,0x40);  //blank pixel
+            matrix.writeDigitRaw(4,0x40);  //blank pixel
+            matrix.writeDisplay();
+          }
+          break;
+        case 16:  // # pressed - Enter Timer Mode
+          if (timerentry==0)  { // first time # was pushed, now pay attention to numbers to enter time)
+            timerentry = 1;
+            timedigits = 0;
+            matrix.writeDigitRaw(0,0x40);  //blank pixel
+            matrix.writeDigitRaw(1,0x40);  //blank pixel
+            matrix.drawColon(false);  //  Turn off the colon
+            matrix.writeDigitRaw(3,0x40);  //blank pixel
+            matrix.writeDigitRaw(4,0x40);  //blank pixel
+            matrix.writeDisplay();
+          }
+          break;
+        case 1:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 2:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 3:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 4:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 5:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 6:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;          
+        case 7:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;          
+        case 8:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 9:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+        case 0:
+          if (timerentry==1)  {
+            handledigits();
+          }
+          break;
+      }
     delay(REPEAT_DELAY);    // Adjust for repeat / lockout time
     irrecv.resume(); // receive the next value
-  }  
-}
-
+  }
 } //end main loop
+void handledigits() {
+  if (timedigits==0) {
+    pos0=0;pos1=0;pos2=0;pos3=ButtonValue;
+    timedigits++;
+    WriteTime();
+  } else if (timedigits==1) {
+    pos0=0;pos1=0;pos2=pos3;pos3=ButtonValue;
+    timedigits++;
+    WriteTime();
+  } else if (timedigits==2) {
+    pos0=0;pos1=pos2;pos2=pos3;pos3=ButtonValue;
+    timedigits++;
+    WriteTime();
+  } else if (timedigits==3) {
+    pos0=pos1;pos1=pos2;pos2=pos3;pos3=ButtonValue;
+    timedigits++;
+    WriteTime();
+  } else if (timedigits==4) {
+    pos0=0;pos1=0;pos2=0;pos3=0;
+    timedigits=0;
+    WriteTime();
+  }
+}
 void WriteLOW()  {   //  Only draw "_LO_" to the 7-segment display, no mode or relay changes included here
   matrix.setBrightness(5);
   matrix.writeDigitRaw(0,0x0);  //blank pixel
@@ -154,28 +257,32 @@ void WriteTime() {
   } else {
     matrix.drawColon(false);
   }
-  matrix.writeDigitNum(3,pos3);
-  matrix.writeDigitNum(4,pos4);    
+  matrix.writeDigitNum(3,pos2);
+  matrix.writeDigitNum(4,pos3);    
   matrix.writeDisplay();
 }
-void FanLOW() {
+void FanLOW() {  
   digitalWrite(HiRelay, LOW);
   delay(500);
   digitalWrite(LoRelay, HIGH);
+  fanspeed = 1;
 }
 void FanHI()  {
   digitalWrite(LoRelay, LOW);
   delay(500);
   digitalWrite(HiRelay, HIGH);
+  fanspeed = 2;
 }
 void FanOFF()  {
   digitalWrite(LoRelay, LOW);
   digitalWrite(HiRelay, LOW);
+  mode = 0;
+  fanspeed = 0;
 }
 void Expire() {   //function for timer expiration - open relays, reset timer value to 00:00, and set display to off
   FanOFF();
   delay(500);
-  WriteOFF():
+  WriteOFF();
   delay(500);
   WriteBLANK();
   delay(200);
