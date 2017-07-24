@@ -35,16 +35,15 @@ Adafruit_7segment matrix = Adafruit_7segment();
   int mode = 0; //  Off = 0, On = 1, Timer = 2
   int fanspeed = 0; //  Low = 1, Hi = 2
   int timerentry = 0;
+  int timerrunning = 0;
+  int loopcount = 0;
+  int minutes,seconds;  
   int pos0=0;
   int pos1=0;
   int colon=1;
   int pos2=0;
   int pos3=0;
-  int hours = 0; // start hours
-  int minutes = 0; //start min
-  int seconds = 0; //start seconds
   int timedigits;
-  int timelength;
 
 //Define pins for fan speed relays
   int LoRelay = 9;
@@ -88,8 +87,8 @@ void loop() {
           }
           if (timerentry==1) {
             timerentry = 0;
-            timedigits="";
-          }
+            timedigits = 0;
+          }          
           WriteHI();
           break;
         case 11:  // Down Arrow pressed - Fan to Lo speed
@@ -98,28 +97,31 @@ void loop() {
           }
           if (timerentry==1) {
             timerentry = 0;
-            timedigits="";
+            timedigits = 0;
           }
           WriteLOW();
           break;
         case 12:  // Left Arrow pressed - Fan Off
+          timerrunning = 0;
           if (fanspeed!=0) {
-            WriteOFF();
             FanOFF();
+            WriteOFF();
+            
           }
           if (timerentry==1) {
             timerentry = 0;
-            timedigits="";
+            timedigits = 0;
           }
           break;
         case 15:  // *(star) pressed - reset timer entry
           if (timerentry==1) {
             timedigits = 0;
-            matrix.writeDigitRaw(0,0x40);  //blank pixel
-            matrix.writeDigitRaw(1,0x40);  //blank pixel
+            timerrunning = 0;
+            matrix.writeDigitNum(0,0);  //  zero
+            matrix.writeDigitNum(1,0);  //  zero
             matrix.drawColon(false);  //  Turn off the colon
-            matrix.writeDigitRaw(3,0x40);  //blank pixel
-            matrix.writeDigitRaw(4,0x40);  //blank pixel
+            matrix.writeDigitNum(3,0);  //  zero
+            matrix.writeDigitNum(4,0);  //  zero
             matrix.writeDisplay();
           }
           break;
@@ -127,12 +129,24 @@ void loop() {
           if (timerentry==0)  { // first time # was pushed, now pay attention to numbers to enter time)
             timerentry = 1;
             timedigits = 0;
-            matrix.writeDigitRaw(0,0x40);  //blank pixel
-            matrix.writeDigitRaw(1,0x40);  //blank pixel
+            timerrunning = 0;
+            matrix.writeDigitNum(0,0);  //  zero
+            matrix.writeDigitNum(1,0);  //  zero
             matrix.drawColon(false);  //  Turn off the colon
-            matrix.writeDigitRaw(3,0x40);  //blank pixel
-            matrix.writeDigitRaw(4,0x40);  //blank pixel
+            matrix.writeDigitNum(3,0);  //  zero
+            matrix.writeDigitNum(4,0);  //  zero
             matrix.writeDisplay();
+          } else {  // # pressed after digit entry, start the timer.
+            timerentry = 0;
+            String strminutes;
+            strminutes = pos0;
+            strminutes += pos1;
+            strminutes += pos2;
+            strminutes += pos3;
+            minutes = strminutes.toInt();
+            loopcount = 0;
+            seconds = 0;
+            timerrunning = 1;
           }
           break;
         case 1:
@@ -188,6 +202,54 @@ void loop() {
       }
     delay(REPEAT_DELAY);    // Adjust for repeat / lockout time
     irrecv.resume(); // receive the next value
+  }   // endof IR input capture block
+  if (timerrunning==1)  { //means the timer is set and active
+    loopcount++;
+    delay(100);
+    if (loopcount==1) {
+      matrix.drawColon(true);  //  blink the colon to indicate timer running
+      matrix.writeDisplay();
+    }
+    if (loopcount==6) {
+      matrix.drawColon(false);  //  blink the colon to indicate timer running
+      matrix.writeDisplay();
+    }
+    if (loopcount==10) {
+      seconds++;
+      loopcount = 0;
+    }
+    if (seconds==60) {
+      minutes--;
+      seconds = 0;
+      if (minutes==0) { //  timer has expired. shut everything down
+        Expire();
+      }
+      if ((minutes < 10)&&(minutes > 0))  {  //  single digit value
+        pos0 = 0;
+        pos1 = 0;
+        pos2 = 0;
+        pos3 = minutes;
+        WriteTime();
+      } else if ((minutes < 100)&&(minutes > 9)) { // double digit value
+        pos0 = 0;
+        pos1 = 0;
+        pos2 = minutes / 10;
+        pos3 = minutes - (pos2 * 10);
+        WriteTime();
+      } else if ((minutes < 1000)&&(minutes > 99)) {  //  three digit value
+        pos0 = 0;
+        pos1 = minutes / 100;
+        pos2 = (minutes - (pos1 * 100)) / 10;
+        pos3 = minutes - (pos1 * 100) - (pos2 * 10);
+        WriteTime();
+      } else if (minutes > 999) {  //  four digit value - why would anyone set a timer for 1000+ minutes?
+        pos0 = minutes / 1000;
+        pos1 = (minutes - (pos0 * 1000)) / 100;
+        pos2 = (minutes - (pos0 * 1000) - (pos1 * 100)) / 10;
+        pos3 = minutes - (pos0 * 1000) - (pos1 * 100) - (pos2 * 10);
+        WriteTime();
+      }      
+    }
   }
 } //end main loop
 void handledigits() {
@@ -239,6 +301,8 @@ void WriteOFF()  {   //  Only draw "_OFF" to the 7-segment display, no mode or r
   matrix.writeDigitRaw(3,0x71);   // Hex map for letter F
   matrix.writeDigitRaw(4,0x71);   // Hex map for letter F
   matrix.writeDisplay();
+  delay(5000);
+  WriteBLANK();
 }
 void WriteBLANK()  {   // Blank the display
   matrix.writeDigitRaw(0,0x0);  //blank pixel
@@ -266,12 +330,18 @@ void FanLOW() {
   delay(500);
   digitalWrite(LoRelay, LOW);
   fanspeed = 1;
+  if (mode==0) {
+    mode=1;
+  }
 }
 void FanHI()  {
   digitalWrite(LoRelay, HIGH);
   delay(500);
   digitalWrite(HiRelay, LOW);
   fanspeed = 2;
+  if (mode==0) {
+    mode=1;
+  }
 }
 void FanOFF()  {
   digitalWrite(LoRelay, HIGH);
@@ -280,6 +350,7 @@ void FanOFF()  {
   fanspeed = 0;
 }
 void Expire() {   //function for timer expiration - open relays, reset timer value to 00:00, and set display to off
+  timerrunning = 0;  
   FanOFF();
   delay(500);
   WriteOFF();
